@@ -23,7 +23,8 @@ float sdf_circle(vec2 p, vec2 c, float r)
 // reference: https://iquilezles.org/articles/distfunctions2d/, Box-exact
 float sdf_box( in vec2 p, float angle, in vec2 b )
 {
-    mat2 rot = mat2(cos(-angle), sin(-angle), -sin(-angle), cos(-angle));
+    // mat2 rot = mat2(cos(-angle), sin(-angle), -sin(-angle), cos(-angle));
+    mat2 rot = mat2(1);
     p = rot * p;
 
     vec2 d = abs(p)-b;
@@ -37,11 +38,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     float r = 0.2;
     
     // circle
-    // float d = sdf_circle(p, c, r);
+    float d = sdf_circle(p, c, r);
 
     // // rotating box
-    vec2 b = vec2(0.2, 0.3);
-    float d = sdf_box(p, iTime, b);
+    // vec2 b = vec2(0.2, 0.3);
+    // float d = sdf_box(p, iTime, b);
 
     // our coloring implementation
     vec3 color = vec3(0.0, 0.0, 0.0);
