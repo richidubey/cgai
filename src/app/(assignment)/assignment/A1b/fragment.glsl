@@ -24,9 +24,31 @@ vec3 rotate(vec3 p, vec3 ax, float ro)
 //// sdf functions
 /////////////////////////////////////////////////////
 
+float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7)))*43758.5453);
+}
+float originalsdfPlane(vec3 p, float h)
+{
+    // return p.y - h;
+
+    float first = sin(p.x + iTime);
+    float second = cos(p.z + iTime);
+
+    float randomness = hash(floor(p.xz * .5) + iTime*.1) * .3;
+    // float timeVaryingAmplitude = .3 + .2 * sin(iTime*.5);
+
+    // return p.y - (0.1 + randomness)*first*second - h;
+    return p.y - (0.1)*first*second - h;
+}
+
+
 float sdfPlane(vec3 p, float h)
 {
-    return p.y - h;
+
+    float first = sin(p.x + iTime);
+    float second = cos(p.z + iTime);
+
+    return p.y - (0.1)*first*second - h;
 }
 
 float sdfBunny(vec3 p)
@@ -191,8 +213,11 @@ float sdf(vec3 p)
 
     //// your implementation starts
     // return sdfBunny(p - vec3(-1.0, 1., 4.));
-    s = sdfUnion(sdfPlane(p, plane_h), sdfBunny(p - vec3(-1.0, 1., 4.)));
-    s = sdfUnion(s, sdfCow(p - vec3(1.0, 1., 4.))); 
+    // s = sdfUnion(sdfPlane(p, plane_h), sdfBunny(p - vec3(-1.0, 1., 4.)));
+
+    
+    s = sdfUnion(sdfPlane(p, plane_h), sdfBunny(p - vec3(-1.0, .4 + 0.05 * sin(iTime * 0.5), 4.)));
+    s = sdfUnion(s, sdfCow(p - vec3(1.0, .4 + 0.05 * sin(iTime * 0.5), 4.))); 
     //// your implementation ends
 
     return s;
@@ -274,6 +299,13 @@ vec3 phong_shading(vec3 p, vec3 n)
     if(p.z > 20.0)
     {
         vec3 color = vec3(0.04, 0.16, 0.33);
+
+        vec3 topColor = vec3(0.7, 0.9, 1.0);  // Soft sky blue
+        vec3 bottomColor = vec3(0.0, 0.3, 0.6); // Deep water blue
+    
+        float mixFactor = smoothstep(0.0, 0.1, p.y); // Smooth transition
+        return mix(bottomColor, topColor, mixFactor);
+
         // vec3 color = vec3(1, 1, 1);
         return color;
     }
@@ -298,8 +330,8 @@ vec3 phong_shading(vec3 p, vec3 n)
 
     //// your implementation start
 
-    if(p.y < 0.01)
-    color = vec3(0.9961, 0.9961, 0.0);
+    if(p.y < 0.1)
+    color = vec3(0.0, 0.5, 0.8);
     else if(p.x < 0.0)
     color = vec3(1, 0, 0);
     else 
@@ -312,6 +344,7 @@ vec3 phong_shading(vec3 p, vec3 n)
 /////////////////////////////////////////////////////
 //// main function
 /////////////////////////////////////////////////////
+const float kPi = 3.1415927;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
