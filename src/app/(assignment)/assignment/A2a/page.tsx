@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import vertexShader from '@/shaders/common/vertex.glsl';
 import fragmentShader from './fragment.glsl';
 
-const Test = ({ dpr, volumeData }: { dpr: number; volumeData: Uint8Array | null }) => {
+const Test = ({ dpr, volumeData, headData }: { dpr: number; volumeData: Uint8Array | null; headData : Uint8Array | null }) => {
   const { viewport } = useThree();
 
   const tex = new THREE.Data3DTexture(volumeData, 256, 256, 256);
@@ -20,6 +20,16 @@ const Test = ({ dpr, volumeData }: { dpr: number; volumeData: Uint8Array | null 
   tex.wrapR = THREE.ClampToEdgeWrapping;
   tex.needsUpdate = true;
 
+
+  const texHead = new THREE.Data3DTexture(headData, 128, 256, 256);
+  texHead.format = THREE.RedFormat;
+  texHead.minFilter = THREE.LinearFilter;
+  texHead.magFilter = THREE.LinearFilter;
+  texHead.wrapS = THREE.ClampToEdgeWrapping;
+  texHead.wrapT = THREE.ClampToEdgeWrapping;
+  texHead.wrapR = THREE.ClampToEdgeWrapping;
+  texHead.needsUpdate = true;
+
   const uniforms = useRef({
     iTime: { value: 0 },
     iResolution: {
@@ -28,6 +38,9 @@ const Test = ({ dpr, volumeData }: { dpr: number; volumeData: Uint8Array | null 
     iVolume: {
       value: tex,
     },
+    iVolumeHead: {
+      value: texHead,
+    }
   }).current;
 
   useFrame((_, delta) => {
@@ -49,29 +62,22 @@ const Test = ({ dpr, volumeData }: { dpr: number; volumeData: Uint8Array | null 
 
 export default function TestPage() {
   const [volumeData, setVolumeData] = useState<Uint8Array | null>(null);
-  useEffect(() => {
-    // Define the fixed path to the file
-    const fixedPath = '/foot_256x256x256_uint8.raw'; // Replace with the actual path
+  const [headData, setHeadData] = useState<Uint8Array | null>(null);
 
-    const fetchVolumeData = async () => {
+  useEffect(() => {
+    const loadVolume = async (path: string, setter: React.Dispatch<React.SetStateAction<Uint8Array | null>>) => {
       try {
-        const response = await fetch(fixedPath);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch file: ${response.statusText}`);
-        }
+        const response = await fetch(path);
+        if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
         const data = await response.arrayBuffer();
-        const volumeArray = new Uint8Array(data);
-        setVolumeData(volumeArray);
+        setter(new Uint8Array(data));
       } catch (error) {
-        if (error instanceof Error) {
-          console.error(error.message);
-        } else {
-          console.error('An unexpected error occurred', error);
-        }
+        console.error(error);
       }
     };
 
-    fetchVolumeData();
+    loadVolume('/foot_256x256x256_uint8.raw', setVolumeData);
+    loadVolume('/vis_male_128x256x256_uint8.raw', setHeadData);
   }, []);
 
   const dpr = 1;
@@ -91,7 +97,7 @@ export default function TestPage() {
         }}
       >
         <Suspense fallback={null}>
-          {volumeData && <Test dpr={dpr} volumeData={volumeData} />}
+          {volumeData && headData && <Test dpr={dpr} volumeData={volumeData} headData={headData}/>}
         </Suspense>
       </Canvas>
       {/* <div className="absolute top-16">

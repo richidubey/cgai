@@ -10,6 +10,7 @@ varying vec2 vUv;                   //// screen uv coordinates (varying, from ve
 uniform vec2 iResolution;           //// screen resolution (uniform, from CPU)
 uniform float iTime;                //// time elapsed (uniform, from CPU)
 uniform highp sampler3D iVolume;    //// volume texture
+uniform highp sampler3D iVolumeHead;    //// volume texture
 
 /////////////////////////////////////////////////////
 //// camera initialization
@@ -75,10 +76,16 @@ vec4 readSDFVolume(vec3 p)
     float distance = sdSphere(p, 1.0); 
 
     //// convert sdf value to a color
+    vec3 color = palette(-distance);
 
+    vec4 vol;
+    if(distance<1.0) //Inside the object
+        vol= vec4(color, 1); //Density is 1
+    else 
+        vol = vec4(color, 0); //Density is 0
     //// your implementation starts
-
-    return vec4(0.0, 0.0, 0.0, 0.0);
+    
+    return vol;
 
     //// your implementation ends
 }
@@ -103,8 +110,43 @@ vec4 readCTVolume(vec3 p)
     }
 
     //// your implementation starts
+    vec4 text = texture(iVolume, tex_coord);
 
-    return vec4(0.0, 0.0, 0.0, 0.0);
+    if (text.x < 0.1)
+        return vec4(0.0);
+
+    // vec4 ret = text * 1.2; //To enhance visualization
+    vec4 ret = vec4(palette(text.x), text.x) * 2.0; //To enhance visualization
+    return ret; 
+
+    //// your implementation ends
+}
+
+vec3 rotate90_Z(vec3 p) {
+    return vec3(p.y, -p.x, p.z);
+}
+
+vec4 readCTVolumeHead(vec3 p){
+
+    p = rotate90_Z(p);
+    //// normalize coordinates to [0, 1] range
+    vec3 tex_coord = (p + vec3(1.0)) * 0.5;
+
+    //// check if tex_coord is outside the box
+    if (tex_coord.x < 0.0 || tex_coord.x > 1.0 || 
+        tex_coord.y < 0.0 || tex_coord.y > 1.0 || 
+        tex_coord.z < 0.0 || tex_coord.z > 1.0) {
+        return vec4(0.0);
+    }
+
+    //// your implementation starts
+    vec4 text = texture(iVolumeHead, tex_coord);
+
+    if (text.x < 0.1)
+        return vec4(0.0);
+
+    vec4 ret = vec4(palette(text.x), text.x) * 2.0; //To enhance visualization
+    return ret; 
 
     //// your implementation ends
 }
@@ -133,8 +175,16 @@ vec4 volumeRendering(vec3 ro, vec3 rd, float near, float far, int n_samples)
         vec3 p = ro + t * rd;                                                   //// sample position on the ray
 
         //// your implementation starts
+        vec4 currColorDensity = readSDFVolume(p - vec3(-2.0, 0.0, 0.0));
+        currColorDensity = currColorDensity + readCTVolume( p - vec3(2.0, 0.0, 0.0)) + readCTVolumeHead( p - vec3(0.0, 0.0, 0.0));
 
 
+
+        float currDensity = currColorDensity.w;
+        vec3 currColor = currColorDensity.xyz;
+
+        color = color + transmittance * ( 1.0 - exp(-currDensity * stepSize))*currColor;
+        transmittance = transmittance * exp(-currDensity * stepSize);
         //// your implementation ends
 
         //// early termination if opacity is high
