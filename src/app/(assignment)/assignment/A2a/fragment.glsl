@@ -11,7 +11,8 @@ uniform vec2 iResolution;           //// screen resolution (uniform, from CPU)
 uniform float iTime;                //// time elapsed (uniform, from CPU)
 uniform highp sampler3D iVolume;    //// volume texture
 uniform highp sampler3D iVolumeHead;    //// volume texture
-
+// uniform highp sampler3D iVolumeAbd;
+vec3 palette(in float t) ;
 /////////////////////////////////////////////////////
 //// camera initialization
 /////////////////////////////////////////////////////
@@ -30,17 +31,7 @@ mat3 setCamera(in vec3 ro, in vec3 ta, float cr)
 //// density-to-color conversion
 /////////////////////////////////////////////////////
 
-//// Inigo Quilez - https://iquilezles.org/articles/palettes/
-//// This function converts a scalar value t to a color
-vec3 palette(in float t) 
-{
-  vec3 a = vec3(0.5, 0.5, 0.5);
-  vec3 b = vec3(0.5, 0.5, 0.5);
-  vec3 c = vec3(1.0, 1.0, 1.0);
-  vec3 d = vec3(0.0, 0.10, 0.20);
 
-  return a + b * cos(6.28318 * (c * t + d));
-}
 
 /////////////////////////////////////////////////////
 //// sdf definitions
@@ -73,7 +64,7 @@ float sdBox(vec3 p, vec3 b)
 vec4 readSDFVolume(vec3 p)
 {
     //// sdf object
-    float distance = sdSphere(p, 1.0); 
+    float distance = sdSphere(p, 0.5); 
 
     //// convert sdf value to a color
     vec3 color = palette(-distance);
@@ -100,8 +91,11 @@ vec4 readSDFVolume(vec3 p)
 
 vec4 readCTVolume(vec3 p)
 {
+    
     //// normalize coordinates to [0, 1] range
+    
     vec3 tex_coord = (p + vec3(1.0)) * 0.5;
+    
     //// check if tex_coord is outside the box
     if (tex_coord.x < 0.0 || tex_coord.x > 1.0 || 
         tex_coord.y < 0.0 || tex_coord.y > 1.0 || 
@@ -112,8 +106,8 @@ vec4 readCTVolume(vec3 p)
     //// your implementation starts
     vec4 text = texture(iVolume, tex_coord);
 
-    if (text.x < 0.1)
-        return vec4(0.0);
+    // if (text.x < 0.1)
+    //     return vec4(0.0);
 
     // vec4 ret = text * 1.2; //To enhance visualization
     vec4 ret = vec4(palette(text.x), text.x) * 2.0; //To enhance visualization
@@ -122,13 +116,44 @@ vec4 readCTVolume(vec3 p)
     //// your implementation ends
 }
 
+vec3 rotate90_Y(vec3 p) {
+    return vec3(p.z, p.y, -p.x);
+}
+
 vec3 rotate90_Z(vec3 p) {
     return vec3(p.y, -p.x, p.z);
 }
 
+
+float displaceP(vec3 p) {
+    return sin(2.0*p.x) + sin(2.0*p.y) + sin(2.0*p.z);
+    // return p.x + p.y + p.z;
+}
+
+//// Inigo Quilez - https://iquilezles.org/articles/palettes/
+//// This function converts a scalar value t to a color
+vec3 palette(in float t) 
+{
+  vec3 a = vec3(0.5, 0.5, 0.5);
+  vec3 b = vec3(0.5, 0.5, 0.5);
+  vec3 c = vec3(1.0, 1.0, 1.0);
+  vec3 d = vec3(0.0, 0.10, 0.20);
+
+  //return a + b * cos(6.28318 * (c * t + d));
+  //return a + b * cos(6.28318 * (sin(iTime) + cos(iTime)) * (c * t + d));
+  return a + b * cos(4.28318 * ((sin(2.0*iTime) + 1.5) * 2.5)* (c * t + d));
+}
+
 vec4 readCTVolumeHead(vec3 p){
 
-    p = rotate90_Z(p);
+    // float timeFactor =  sin(2.0*iTime) * 5.0; 
+    // float displacement = 0.05 * (.05 + sin(20.0 * p.x * iTime + .5) * sin(30.0 * p.y* iTime + .5) * sin(40.0 * p.z* iTime + .5));
+    
+    float envelope =pow(sin(iTime), 1.5); //
+    float displacement = envelope * (0.5 + sin(20.0 * p.x * iTime) * sin(20.0 * p.y * iTime) * sin(20.0 * p.z * iTime));
+    p = p + displacement;
+    p = p * 0.75;
+    p = rotate90_Y(rotate90_Z(p));
     //// normalize coordinates to [0, 1] range
     vec3 tex_coord = (p + vec3(1.0)) * 0.5;
 
@@ -145,11 +170,39 @@ vec4 readCTVolumeHead(vec3 p){
     if (text.x < 0.1)
         return vec4(0.0);
 
-    vec4 ret = vec4(palette(text.x), text.x) * 2.0; //To enhance visualization
+    // vec4 ret = vec4(palette(text.x), text.x + displaceP(p)) * 2.0; //To enhance visualization
+    vec4 ret = vec4(palette(text.x), text.x ) * 2.0; //To enhance visualization
     return ret; 
 
     //// your implementation ends
 }
+
+// vec4 readCTVolumeAbd(vec3 p){
+
+//     // p = rotate90_Y(rotate90_Z(p));
+//     //// normalize coordinates to [0, 1] range
+//     vec3 tex_coord = (p + vec3(1.0)) * 0.5;
+
+//     //// check if tex_coord is outside the box
+//     if (tex_coord.x < 0.0 || tex_coord.x > 1.0 || 
+//         tex_coord.y < 0.0 || tex_coord.y > 1.0 || 
+//         tex_coord.z < 0.0 || tex_coord.z > 1.0) {
+//         return vec4(0.0);
+//     }
+
+//     //// your implementation starts
+//     vec4 text = texture(iVolumeAbd, tex_coord);
+
+
+//     if (text.x < 0.2)
+//         return vec4(0.0);
+
+
+//     vec4 ret = vec4(palette(text.x), text.x) * 1.2; //To enhance visualization
+//     return ret; 
+
+//     //// your implementation ends
+// }
 
 /////////////////////////////////////////////////////
 //// Step 3: ray tracing with volumetric data
@@ -157,6 +210,7 @@ vec4 readCTVolumeHead(vec3 p){
 //// Your task is to accumulate color and transmittance along the ray based on the absorption-emission volumetric model.
 //// You may want to read the course slides, Equation (3) in the original NeRF paper, and the A2a document for the rendering model.
 /////////////////////////////////////////////////////
+
 
 //// ro - ray origin, rd - ray direction, 
 //// near - near bound of t, far - far bound of t, 
@@ -175,10 +229,9 @@ vec4 volumeRendering(vec3 ro, vec3 rd, float near, float far, int n_samples)
         vec3 p = ro + t * rd;                                                   //// sample position on the ray
 
         //// your implementation starts
-        vec4 currColorDensity = readSDFVolume(p - vec3(-2.0, 0.0, 0.0));
-        currColorDensity = currColorDensity + readCTVolume( p - vec3(2.0, 0.0, 0.0)) + readCTVolumeHead( p - vec3(0.0, 0.0, 0.0));
-
-
+        vec4 currColorDensity = readCTVolumeHead( p - vec3(0.0, 1.0, 0.0));
+        //readSDFVolume(p - vec3(-2.0, 0.0, 0.0));
+        //currColorDensity = currColorDensity + readCTVolume( p - vec3(2.0, 0.0, 0.0)) + readCTVolumeHead( p - vec3(0.0, 0.0, 0.0));// + readCTVolumeAbd( p - vec3(0.0, 0.0, 0.0));
 
         float currDensity = currColorDensity.w;
         vec3 currColor = currColorDensity.xyz;

@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import vertexShader from '@/shaders/common/vertex.glsl';
 import fragmentShader from './fragment.glsl';
 
-const Test = ({ dpr, volumeData, headData }: { dpr: number; volumeData: Uint8Array | null; headData : Uint8Array | null }) => {
+const Test = ({ dpr, volumeData, headData, abdData }: { dpr: number; volumeData: Uint8Array | null; headData : Uint8Array | null ; abdData : Uint8Array | null }) => {
   const { viewport } = useThree();
 
   const tex = new THREE.Data3DTexture(volumeData, 256, 256, 256);
@@ -30,6 +30,17 @@ const Test = ({ dpr, volumeData, headData }: { dpr: number; volumeData: Uint8Arr
   texHead.wrapR = THREE.ClampToEdgeWrapping;
   texHead.needsUpdate = true;
 
+
+  // const texAbd = new THREE.Data3DTexture(abdData, 512, 512, 174);
+  // texAbd.format = THREE.RedFormat;
+  // texAbd.minFilter = THREE.LinearFilter;
+  // texAbd.magFilter = THREE.LinearFilter;
+  // texAbd.wrapS = THREE.ClampToEdgeWrapping;
+  // texAbd.wrapT = THREE.ClampToEdgeWrapping;
+  // texAbd.wrapR = THREE.ClampToEdgeWrapping;
+  // texAbd.needsUpdate = true;
+
+
   const uniforms = useRef({
     iTime: { value: 0 },
     iResolution: {
@@ -40,6 +51,9 @@ const Test = ({ dpr, volumeData, headData }: { dpr: number; volumeData: Uint8Arr
     },
     iVolumeHead: {
       value: texHead,
+    },
+    iVolumeAbd: {
+      value: null,
     }
   }).current;
 
@@ -63,6 +77,7 @@ const Test = ({ dpr, volumeData, headData }: { dpr: number; volumeData: Uint8Arr
 export default function TestPage() {
   const [volumeData, setVolumeData] = useState<Uint8Array | null>(null);
   const [headData, setHeadData] = useState<Uint8Array | null>(null);
+  // const [abdData, setAbdData] = useState<Uint8Array | null>(null);
 
   useEffect(() => {
     const loadVolume = async (path: string, setter: React.Dispatch<React.SetStateAction<Uint8Array | null>>) => {
@@ -78,6 +93,7 @@ export default function TestPage() {
 
     loadVolume('/foot_256x256x256_uint8.raw', setVolumeData);
     loadVolume('/vis_male_128x256x256_uint8.raw', setHeadData);
+    // loadVolume('/prone_512x512x463_uint16.raw', setAbdData);
   }, []);
 
   const dpr = 1;
